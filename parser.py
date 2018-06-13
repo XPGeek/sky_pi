@@ -29,20 +29,28 @@ try:
         exit()
 
     #now that we have determined the area of interest, isolate
-    print(str(index_a) + " " + str(index_b) + " is our substring index.")
-
     current_substring = switch_config[index_a:index_a+index_b]
-
-    print(current_substring)
 
     current_search_pattern = re.compile(r'([T][e][n][ ][^\s]+)')
 
     infrastructure_ports = list()
+    infrastructure_interfaces = list()
 
+    #check for the ports we care about and build an interface list
     for infrastructure_port in re.finditer(current_search_pattern, current_substring):
         if infrastructure_port.group(1) not in infrastructure_ports:
             infrastructure_ports.append(infrastructure_port.group(1))
-            print(infrastructure_port.group(1))
+            infrastructure_interfaces.append("interface TenGigabitEthernet" + infrastructure_port.group(1)[4:])
+
+    #examine the interface
+    for infrastructure_interface in infrastructure_interfaces:
+        index_a = switch_config.find(infrastructure_interface)
+        index_b = switch_config[index_a:].find("!")
+        print(str(index_a) + " " + str(index_b))
+        current_substring = switch_config[index_a:index_a+index_b]
+        print(current_substring)
+
+
 
 finally:
     switch_config_file.close()
