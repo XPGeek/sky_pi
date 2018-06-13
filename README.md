@@ -10,6 +10,9 @@ The prefix "IE" usually designates a firewall, and a switch model number, for ex
 
 The process should be the same regardless, however.
 
+
+
+
 Process:
 
 Look for the string "show cdp nei | e SEP"
