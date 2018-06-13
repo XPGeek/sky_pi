@@ -13,6 +13,7 @@ try:
     #STEP 1
     #Look for infrastructure_port information
 
+    #search for the first
     current_search_pattern = "show cdp nei | e SEP"
     index_a = switch_config.find(current_search_pattern)
 
@@ -36,8 +37,12 @@ try:
 
     current_search_pattern = re.compile(r'([T][e][n][ ][^\s]+)')
 
+    infrastructure_ports = list()
+
     for infrastructure_port in re.finditer(current_search_pattern, current_substring):
-        print(infrastructure_port.group(1))
+        if infrastructure_port.group(1) not in infrastructure_ports:
+            infrastructure_ports.append(infrastructure_port.group(1))
+            print(infrastructure_port.group(1))
 
 finally:
     switch_config_file.close()
