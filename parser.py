@@ -50,10 +50,10 @@ try:
 
         #if the interface has something we don't like, we can flag it
         if current_substring.find("authentication") != -1:
-            flagged_infrastructure_interfaces.append(("Authentication enabled on infrastructure interface " + infrastructure_interface, infrastructure_interface))
+            flagged_infrastructure_interfaces.append("Authentication enabled on infrastructure interface " + infrastructure_interface)
 
         if current_substring.find("dot1x") != -1:
-            flagged_infrastructure_interfaces.append(("802.1.x enabled on infrastructure interface " + infrastructure_interface, infrastructure_interface))
+            flagged_infrastructure_interfaces.append("802.1.x enabled on infrastructure interface " + infrastructure_interface)
 
         print(current_substring)
 
@@ -93,12 +93,80 @@ try:
 
             #see if the interface is even configured
             if interface_lines is 1:
-                flagged_interfaces.append(str(interface.group(1)) + " contains an empty configuration.", infrastructure_interface))
-                print("dongers")
+                flagged_interfaces.append(str(interface.group(1)) + " has an empty configuration.")
+                continue
 
-            print(interface_substring + "\n" + "Number of lines: " + str(interface_lines))
+            #now, search for the vlan key command
+            current_search_pattern = "switchport access vlan"
+            index_a = interface_substring.find(current_search_pattern)
 
-    print("bing")
+            #if it doesn't have one, note it
+            if index_a == -1:
+                flagged_interfaces.append(str(interface.group(1) + " does not have an empty configuration, but does not have an access VLAN configured.")
+                continue
+
+            #non-greedy regex to find the first numerical numbers on the line where the command switchport access vlan
+            current_search_pattern = re.compile(r'[0-9]+')
+            vlan_access_number = re.search(current_search_pattern, interface_substring[index_a:])
+
+            if vlan_access_number is None:
+                flagged_interfaces.append(str(interface.group(1) + " does not have a VLAN number associated with the access command.")
+                continue
+
+            #now, search for the "other" vlan key command
+            current_search_pattern = "authentication event server dead action reinitialize vlan"
+            index_a = interface_substring.find(current_search_pattern)
+
+            #if it doesn't have one, note it
+            if index_a == -1:
+                flagged_interfaces.append(str(interface.group(1) + " does not have dead action reinitialize VLAN configured.")
+                continue
+
+            #non-greedy regex to find the first numerical numbers on the line where the command switchport access vlan
+            current_search_pattern = re.compile(r'[0-9]+')
+            vlan_dead_access_number = re.search(current_search_pattern, interface_substring[index_a:])
+
+            if vlan_dead_access_number is None:
+                flagged_interfaces.append((str(interface.group(1)) + " does not have a VLAN number associated with the dead action reinitialize VLAN.", infrastructure_interface))
+                continue
+
+            if vlan_access_number.group(0) != vlan_dead_access_number.group(0):
+                flagged_interfaces.append((str(interface.group(1)) + " has mismatched VLAN numbers for access and dead action reinitialize VLANs.", infrastructure_interface))
+                continue
+
+            # authentication order mab dot1x
+            # authentication priority dot1x mab
+
+            index_a = interface_substring.find("authentication order dot1x mab") #incorrect
+            index_b = interface_substring.find("authentication order mab dot1x") #correct
+
+            if index_a != -1 and index_b == -1: #an incorrect configuration was found
+                flagged_interfaces.append((str(interface.group(1)) + " has an incorrect authentication order.", infrastructure_interface))
+                continue
+
+            if index_a == -1 and index_b == -1: #no authentication configuration was found
+                flagged_interfaces.append((str(interface.group(1)) + " does not have authenticaion order configured.", infrastructure_interface))
+                continue
+
+            index_a = interface_substring.find("authentication priority dot1x mab") #correct
+
+            if index_a == -1:
+                flagged_interfaces.append((str(interface.group(1)) + " does not have an authentication order configured.", infrastructure_interface))
+                continue
+
+    index_a = switch_config.find("show authen session")
+
+    if index_a == -1:
+        flagged_interfaces.append("Error: " + (str(sys.argv[1]) + " does not have a valid authenticaion session information.", infrastructure_interface))
+
+    authentication_substring = switch_config[index_a: index_a + switch_config[index_a:].find("Session count =")]
+
+    index_a = authentication_substring.find("UnAuth")
+
+    if index_a == -1:
+        flagged_interfaces.append(("Error: " + str(sys.argv[1]) + " has an unauthenticated session.", infrastructure_interface))
+
+    print(flagged_interfaces)
 
 
 finally:
